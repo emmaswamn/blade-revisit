@@ -1,0 +1,130 @@
+{
+  "version": 5,
+  "provisional": true,
+  "target_n": 15,
+  "note": "满 15 对。pair.note = 分数/闸门 + 范围解读（rust_sig_v3）。参考带：金样≈score≥0.4/NCC≥0.5；中分≈0.15–0.4；弱/负分<0.15；score=-1 为签名闸（span_wide/crop_leak/few_spots）。档位仍可人眼改。",
+  "direction": "rust: 2017→2018; bg optional: 2018→2017 on same pair",
+  "tiers": ["retake", "reject", "watch", "escalate"],
+  "pairs": [
+    {
+      "id": "p01",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0190.JPG",
+      "role": "gold_same",
+      "expected_tier": "escalate",
+      "note": "score≈0.47 NCC≈0.51 tipΔ≈0.03 edgeΔ≈0.07 · 金样带 · escalate"
+    },
+    {
+      "id": "p02",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0253.JPG",
+      "role": "user_pick",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.34 · 跨部件闸 · reject"
+    },
+    {
+      "id": "p03",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0335.JPG",
+      "role": "user_pick",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.22 · 跨部件闸 · reject"
+    },
+    {
+      "id": "p04",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0255.JPG",
+      "role": "user_pick",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.36 · 跨部件闸 · reject"
+    },
+    {
+      "id": "p05",
+      "query_2017": "DJI_0713.JPG",
+      "ref_2018": "DJI_0385.JPG",
+      "role": "user_pick",
+      "expected_tier": "reject",
+      "note": "score≈-0.01 NCC≈0.19 tipΔ≈0.25 · 弱/负分假阳 · reject"
+    },
+    {
+      "id": "p06",
+      "query_2017": "DJI_0578.JPG",
+      "ref_2018": "DJI_0244.JPG",
+      "role": "user_pick",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.26 · 跨部件闸 · reject"
+    },
+    {
+      "id": "p07",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0352.JPG",
+      "role": "false_positive",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.34 · 跨部件闸（旧 NCC≈0.44 虚高）· reject"
+    },
+    {
+      "id": "p08",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0333.JPG",
+      "role": "false_positive",
+      "expected_tier": "reject",
+      "note": "score≈-0.07 NCC≈0.10 edgeΔ≈0.26 · 负分假阳 · reject"
+    },
+    {
+      "id": "p09",
+      "query_2017": "DJI_0752.JPG",
+      "ref_2018": "DJI_0256.JPG",
+      "role": "false_positive",
+      "expected_tier": "reject",
+      "note": "score≈-0.21 NCC≈0.04 edgeΔ≈0.53 · 负分假阳 · reject"
+    },
+    {
+      "id": "p10",
+      "query_2017": "DJI_0713.JPG",
+      "ref_2018": "DJI_0399.JPG",
+      "role": "other_query",
+      "expected_tier": "reject",
+      "note": "score≈0.19 NCC≈0.34 · 中分假阳 · reject"
+    },
+    {
+      "id": "p11",
+      "query_2017": "DJI_0713.JPG",
+      "ref_2018": "DJI_0384.JPG",
+      "role": "other_query",
+      "expected_tier": "reject",
+      "note": "score≈0.07 NCC≈0.27 edgeΔ≈0.29 · 弱分假阳 · reject"
+    },
+    {
+      "id": "p12",
+      "query_2017": "DJI_0624.JPG",
+      "ref_2018": "DJI_0352.JPG",
+      "role": "other_query",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.34 · 跨部件闸 · reject"
+    },
+    {
+      "id": "p13",
+      "query_2017": "DJI_0620.JPG",
+      "ref_2018": "DJI_0325.JPG",
+      "role": "other_query",
+      "expected_tier": "reject",
+      "note": "score=-1 reject=span_wide diam≈1.51 · 跨部件闸 · reject"
+    },
+    {
+      "id": "p14",
+      "query_2017": "DJI_0593.JPG",
+      "ref_2018": "DJI_0190.JPG",
+      "role": "wrong_station",
+      "expected_tier": "reject",
+      "note": "score=-1 q:reject=few_spots(n=2) · query 无锈签名 · reject"
+    },
+    {
+      "id": "p15",
+      "query_2017": "DJI_0765.JPG",
+      "ref_2018": "DJI_0190.JPG",
+      "role": "wrong_station",
+      "expected_tier": "reject",
+      "note": "score=-1 q:reject=span_wide diam≈2.21 · query 跨部件闸 · reject"
+    }
+  ]
+}

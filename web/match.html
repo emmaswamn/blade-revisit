@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="match.title">blade-revisit · rust signature search</title>
+  <style>
+    :root {
+      --bg: #1a1d23; --panel: #242830; --text: #e8eaed; --muted: #9aa0a6;
+      --accent: #6ec6ff; --ok: #81c995; --warn: #fdd663; --bad: #f28b82;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "IBM Plex Sans", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 0.85rem 1.25rem; border-bottom: 1px solid #333842; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 1.05rem; }
+    header a { color: var(--accent); font-size: 0.85rem; }
+    main { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; min-height: calc(100vh - 60px); }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    aside { border-right: 1px solid #333842; background: var(--panel); overflow: auto; }
+    .block { padding: 0.75rem 1rem; border-bottom: 1px solid #333842; }
+    .block h2 { margin: 0 0 0.5rem; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    label.field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+    select, input, button {
+      background: #1a1d23; border: 1px solid #3c424d; color: var(--text);
+      border-radius: 4px; padding: 0.4rem 0.55rem; font-size: 0.85rem;
+    }
+    button { cursor: pointer; background: #2b5278; border-color: #3d6d9c; width: 100%; }
+    button:disabled { opacity: 0.5; }
+    .hint { font-size: 0.8rem; color: var(--warn); margin: 0.4rem 0; line-height: 1.35; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+    .meta strong { color: var(--accent); }
+    section.detail { padding: 1rem 1.25rem; overflow: auto; }
+    .pairs { list-style: none; margin: 0.75rem 0; padding: 0; border: 1px solid #333842; border-radius: 6px; }
+    .pairs li {
+      padding: 0.55rem 0.7rem; border-bottom: 1px solid #2e333c; font-size: 0.8rem;
+      display: grid; grid-template-columns: 2rem 1fr auto; gap: 0.5rem; align-items: center;
+      cursor: pointer;
+    }
+    .pairs li:last-child { border-bottom: 0; }
+    .pairs li:hover, .pairs li.active { background: #2a3140; }
+    .pairs .rank { color: var(--accent); font-weight: 700; }
+    .ok { color: var(--ok); } .fail { color: var(--bad); } .warn { color: var(--warn); }
+    figure { margin: 0.75rem 0 0; background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #333842; }
+    figure img { display: block; width: 100%; height: auto; }
+    figcaption { padding: 0.4rem 0.6rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid #333842; }
+    .thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+    .thumbs figure { margin: 0; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="match.h1">锈签名检索 · 2017 → 2018</h1>
+    <span id="navLinks" style="display:flex;gap:1rem;align-items:center">
+      <a href="/review" data-i18n="nav.review">评审 15 对</a>
+      <a href="/" data-i18n="nav.stage">← 阶段调试</a>
+    </span>
+  </header>
+  <main>
+    <aside>
+      <div class="block">
+        <h2 data-i18n="match.pick">选 2017 查询图（阴天锈更显）</h2>
+        <label class="field"><span data-i18n="match.file">文件</span>
+          <select id="nameSelect"></select>
+        </label>
+        <div class="meta" id="nameHint" data-i18n="match.loading">加载中…</div>
+        <label class="field" style="flex-direction:row;align-items:center;gap:0.45rem;margin-bottom:0.55rem">
+          <input id="usableOnly" type="checkbox" checked style="width:auto;margin:0" />
+          <span style="color:var(--text);font-size:0.8rem" data-i18n="match.usableOnly">query 列表只用 usable</span>
+        </label>
+        <label class="field"><span data-i18n="match.refLimit">2018 usable 池上限（0=全池）</span>
+          <input id="refLimit" type="number" value="0" min="0" max="500" />
+        </label>
+        <label class="field"><span data-i18n="match.topK">Top-K</span>
+          <input id="topK" type="number" value="8" min="1" max="30" />
+        </label>
+        <button type="button" id="searchBtn" data-i18n="match.search">锈签名检索</button>
+        <p class="hint" data-i18n="match.hint" data-i18n-mode="html"></p>
+      </div>
+    </aside>
+    <section class="detail" id="detail">
+      <div class="hint" data-i18n="match.boot"></div>
+      <div class="meta" data-i18n="match.idle"></div>
+    </section>
+  </main>
+  <script src="/static/i18n.js"></script>
+  <script>
+    const { t, onChange, applyDom, mountToggle } = BladeI18n;
+    mountToggle(document.getElementById("navLinks"));
+    applyDom();
+
+    const nameSelect = document.getElementById("nameSelect");
+    const detail = document.getElementById("detail");
+    let lastTop = [];
+    let lastMeta = {};
+
+    async function loadNames() {
+      const usableOnly = document.getElementById("usableOnly")?.checked !== false;
+      const res = await fetch(
+        "/api/images/2017?limit=500&near_only=true&usable_only=" + usableOnly
+      );
+      const data = await res.json();
+      nameSelect.innerHTML = "";
+      for (const im of data.images || []) {
+        const opt = document.createElement("option");
+        opt.value = im.name;
+        opt.textContent = im.name;
+        nameSelect.appendChild(opt);
+      }
+      const prefer = "DJI_0752.JPG";
+      if ([...nameSelect.options].some((o) => o.value === prefer)) {
+        nameSelect.value = prefer;
+      }
+      const hint = document.getElementById("nameHint");
+      if (hint) {
+        hint.textContent = "2017 " + (usableOnly ? "usable " : "") +
+          (data.images || []).length + t("match.galleryLine");
+      }
+    }
+
+    function renderResults(data) {
+      lastTop = data.top || [];
+      lastMeta = data;
+      const gold = data.gold_name || "DJI_0190.JPG";
+      const goldRank = data.gold_rank;
+      let html =
+        '<div class="hint">query <strong>' + (data.query || "") +
+        "</strong> → " + (data.gallery_year || "2018") +
+        " usable ×" + (data.gallery_n ?? "?") +
+        " · Top-" + lastTop.length +
+        (goldRank === 1
+          ? ' · <span class="ok">' + t("match.gold1") + ' ' + gold + " = #1</span>"
+          : (goldRank
+              ? ' · <span class="warn">' + t("match.gold1") + ' ' + gold + " = #" + goldRank + "</span>"
+              : ' · <span class="fail">' + t("match.goldMiss") + '</span>')) +
+        " · " + (data.secs ?? "?") + "s</div>";
+      html += '<div class="meta">' + (data.direction_note || "") +
+        " · cache hit=" + (data.cache_hit ?? "?") +
+        " miss=" + (data.cache_miss ?? "?") +
+        " · query spots=" + (data.query_spots ?? "?") + "</div>";
+      html += '<ul class="pairs" id="pairList">';
+      lastTop.forEach((p, i) => {
+        const ncc = (p.ncc == null) ? "n/a" : Number(p.ncc).toFixed(3);
+        const score = (p.score == null) ? "n/a" : Number(p.score).toFixed(3);
+        const tip = p.geom ? Number(p.geom.tip_delta).toFixed(3) : "?";
+        const edge = p.geom ? Number(p.geom.edge_delta).toFixed(3) : "?";
+        const isGold = (p.name || "") === gold;
+        html +=
+          '<li data-idx="' + i + '">' +
+          '<span class="rank">#' + (p.rank || i + 1) + "</span>" +
+          "<span><strong>" + (p.name || "?") + "</strong>" +
+          (isGold ? ' <span class="ok">GOLD</span>' : "") + "<br/>" +
+          "score " + score + " · ncc " + ncc +
+          " · Δtip " + tip + " · Δedge " + edge +
+          "</span><span></span></li>";
+      });
+      html += "</ul>";
+      html += '<div id="pairDetail"><div class="meta">' + t("match.clickCrop") + '</div></div>';
+      detail.innerHTML = html;
+
+      document.getElementById("pairList").addEventListener("click", (ev) => {
+        const li = ev.target.closest("li[data-idx]");
+        if (!li) return;
+        [...document.querySelectorAll("#pairList li")].forEach((x) =>
+          x.classList.toggle("active", x === li)
+        );
+        showPair(Number(li.dataset.idx));
+      });
+      if (lastTop.length) {
+        document.querySelector("#pairList li")?.classList.add("active");
+        showPair(0);
+      }
+    }
+
+    function showPair(idx) {
+      const p = lastTop[idx];
+      if (!p) return;
+      const box = document.getElementById("pairDetail");
+      const qid = lastMeta.query_id || nameSelect.value;
+      const ncc = (p.ncc == null) ? "n/a" : Number(p.ncc).toFixed(3);
+      const score = (p.score == null) ? "n/a" : Number(p.score).toFixed(3);
+      let geomLine = "";
+      if (p.geom) {
+        geomLine =
+          " · tip " + Number(p.geom.tip_frac_q).toFixed(2) + "→" +
+          Number(p.geom.tip_frac_r).toFixed(2) +
+          " · edge_ratio Δ=" + Number(p.geom.edge_delta).toFixed(3);
+      }
+      const locusQ = "/api/rust_locus/2017/" + encodeURIComponent(qid);
+      const locusR = "/api/rust_locus/2018/" + encodeURIComponent(p.name);
+      box.innerHTML =
+        '<div class="meta">#' + (p.rank || idx + 1) +
+        " · <strong>2017/" + qid + "</strong> → <strong>2018/" + (p.name || "") +
+        "</strong> · score <strong>" + score + "</strong> · ncc <strong>" + ncc +
+        "</strong>" + geomLine + "</div>" +
+        '<div class="hint">' + t("match.provenance") + '</div>' +
+        '<div class="thumbs">' +
+        "<figure><img src='" + locusQ +
+        "' alt='query locus'/><figcaption>" + t("match.locusQ") + "</figcaption></figure>" +
+        "<figure><img src='" + locusR +
+        "' alt='ref locus'/><figcaption>" + t("match.locusR") + "</figcaption></figure>" +
+        "</div>" +
+        (p.preview
+          ? ("<figure><img src='/api/rust_preview/" + encodeURIComponent(p.preview) +
+             "' alt='rust'/><figcaption>" + t("match.cropCap") + "</figcaption></figure>")
+          : '<div class="warn">' + t("match.noPreview") + '</div>');
+    }
+
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("searchBtn");
+      btn.disabled = true;
+      detail.innerHTML =
+        '<div class="hint">' + t("match.searching") + '</div>';
+      try {
+        const res = await fetch("/api/rust_search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: nameSelect.value,
+            query_year: "2017",
+            gallery_year: "2018",
+            top_k: Number(document.getElementById("topK").value) || 8,
+            limit: Number(document.getElementById("refLimit").value) || 0,
+            gold_name: "DJI_0190.JPG",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        renderResults(data);
+      } catch (e) {
+        detail.innerHTML = '<div class="fail">' + t("match.fail") + e.message + "</div>";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("usableOnly")?.addEventListener("change", () => loadNames());
+    onChange(() => { applyDom(); if (lastTop.length) renderResults(lastMeta); });
+    loadNames();
+  </script>
+</body>
+</html>

@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="review.title">blade-revisit · revisit review</title>
+  <style>
+    :root {
+      --bg: #141820; --panel: #1e2430; --panel2: #262d3a; --text: #e8eaed;
+      --muted: #9aa0a6; --accent: #6ec6ff; --ok: #81c995; --warn: #fdd663;
+      --bad: #f28b82; --line: #333842; --chip: #2a3344;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--line);
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
+      align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, #1a2230, var(--bg));
+    }
+    header h1 { margin: 0; font-size: 1.1rem; letter-spacing: 0.01em; }
+    header .sub { font-size: 0.78rem; color: var(--muted); max-width: 42rem; line-height: 1.35; }
+    header nav { display: flex; gap: 0.85rem; flex-wrap: wrap; }
+    header a { color: var(--accent); font-size: 0.82rem; text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    .banner {
+      margin: 0; padding: 0.55rem 1.25rem;
+      background: #243044; border-bottom: 1px solid var(--line);
+      font-size: 0.78rem; color: var(--muted); line-height: 1.4;
+    }
+    .banner strong { color: var(--warn); }
+    main {
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) 1fr;
+      min-height: calc(100vh - 110px);
+    }
+    @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+    aside { border-right: 1px solid var(--line); background: var(--panel); overflow: auto; }
+    .block { padding: 0.75rem 1rem; border-bottom: 1px solid var(--line); }
+    .block h2 {
+      margin: 0 0 0.45rem; font-size: 0.7rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .plist { list-style: none; margin: 0; padding: 0; }
+    .plist li {
+      padding: 0.55rem 0.65rem; border-bottom: 1px solid #2a303a;
+      cursor: pointer; font-size: 0.78rem; line-height: 1.35;
+    }
+    .plist li:hover, .plist li.active { background: var(--chip); }
+    .plist .id { color: var(--accent); font-weight: 700; margin-right: 0.3rem; }
+    .pill {
+      display: inline-block; font-size: 0.65rem; padding: 0.1rem 0.35rem;
+      border-radius: 3px; border: 1px solid var(--line); color: var(--muted);
+      margin-left: 0.25rem;
+    }
+    .pill.escalate, .pill.watch { border-color: #4a6a3a; color: var(--ok); }
+    .pill.reject, .pill.retake { border-color: #6a3a3a; color: var(--bad); }
+    section.detail { padding: 1rem 1.25rem; overflow: auto; }
+    .meta { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.65rem; line-height: 1.4; }
+    .meta strong { color: var(--accent); }
+    .steps {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.6rem 0 0.85rem;
+    }
+    .steps button, .actions button, select, input, textarea {
+      background: #1a1d23; border: 1px solid #3c424d; color: var(--text);
+      border-radius: 4px; padding: 0.4rem 0.65rem; font-size: 0.8rem;
+    }
+    .steps button { cursor: pointer; background: var(--panel2); }
+    .steps button.active { background: #2b5278; border-color: #3d6d9c; }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.5rem 0 0.85rem; }
+    .actions button { cursor: pointer; background: #2b5278; border-color: #3d6d9c; }
+    .actions button.secondary { background: var(--panel2); }
+    .actions button:disabled { opacity: 0.5; }
+    .grid2 {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;
+    }
+    @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+    figure {
+      margin: 0; background: #111; border-radius: 6px; overflow: hidden;
+      border: 1px solid var(--line);
+    }
+    figure img { display: block; width: 100%; height: auto; background: #0a0a0a; min-height: 120px; }
+    figcaption {
+      padding: 0.4rem 0.55rem; font-size: 0.72rem; color: var(--muted);
+      border-top: 1px solid var(--line);
+    }
+    .verdict {
+      margin-top: 0.85rem; padding: 0.7rem 0.85rem;
+      border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+      font-size: 0.82rem; line-height: 1.45;
+    }
+    .verdict .tier { font-size: 1.05rem; font-weight: 700; color: var(--warn); }
+    .edit-row {
+      display: grid; grid-template-columns: 8rem 1fr; gap: 0.5rem;
+      align-items: start; margin-top: 0.55rem; font-size: 0.78rem;
+    }
+    .edit-row label { color: var(--muted); padding-top: 0.35rem; }
+    textarea { width: 100%; min-height: 3.2rem; resize: vertical; }
+    .hint { font-size: 0.78rem; color: var(--warn); margin: 0.35rem 0; line-height: 1.35; }
+    .ok { color: var(--ok); } .fail { color: var(--bad); } .warn { color: var(--warn); }
+    .bg-box {
+      margin-top: 0.75rem; padding: 0.65rem 0.75rem;
+      border: 1px dashed #3c424d; border-radius: 6px; font-size: 0.8rem; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 data-i18n="review.h1">隔年锈迹评审 · 2017 → 2018</h1>
+      <div class="sub" data-i18n="review.sub" data-i18n-mode="html"></div>
+    </div>
+    <nav id="navLinks">
+      <a href="/review" data-i18n="nav.reviewHere">评审（本页）</a>
+      <a href="/match" data-i18n="nav.matchShort">锈检索</a>
+      <a href="/" data-i18n="nav.stage">阶段调试</a>
+      <a href="/bg" data-i18n="nav.bgShort">背景（可选）</a>
+    </nav>
+  </header>
+  <p class="banner" data-i18n="review.banner" data-i18n-mode="html"></p>
+  <main>
+    <aside>
+      <div class="block">
+        <h2 data-i18n="review.listTitle">评测 15 对</h2>
+        <div class="meta" id="listMeta" data-i18n="review.loading">加载中…</div>
+        <ul class="plist" id="pairList"></ul>
+      </div>
+    </aside>
+    <section class="detail" id="detail">
+      <div class="hint" data-i18n="review.boot"></div>
+    </section>
+  </main>
+  <script src="/static/i18n.js"></script>
+  <script>
+    const { t, onChange, applyDom, mountToggle } = BladeI18n;
+    mountToggle(document.getElementById("navLinks"));
+    applyDom();
+
+    function TIER_LABEL() {
+      return {
+        retake: t("review.tier.retake"),
+        reject: t("review.tier.reject"),
+        watch: t("review.tier.watch"),
+        escalate: t("review.tier.escalate"),
+        skip: t("review.tier.skip"),
+      };
+    }
+    function STEPS() {
+      return [
+        { id: "side", label: t("review.step.side") },
+        { id: "lighting", label: t("review.step.lighting") },
+        { id: "overlay", label: t("review.step.overlay") },
+        { id: "kps_masked", label: t("review.step.kps") },
+        { id: "rust", label: t("review.step.rust") },
+      ];
+    }
+
+    let pairs = [];
+    let active = null;
+    let step = "side";
+    let rustPreview = null;
+    let bgState = null;
+
+    const pairList = document.getElementById("pairList");
+    const detail = document.getElementById("detail");
+    const listMeta = document.getElementById("listMeta");
+
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+      );
+    }
+
+    async function loadPairs() {
+      const res = await fetch("/api/eval/pairs");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || res.statusText);
+      pairs = data.pairs || [];
+      listMeta.innerHTML =
+        (data.provisional ? '<span class="warn">' + t("review.provisional") + '</span> · ' : "") +
+        pairs.length + t("review.listMeta");
+      pairList.innerHTML = "";
+      pairs.forEach((p, i) => {
+        const li = document.createElement("li");
+        li.dataset.idx = String(i);
+        li.innerHTML =
+          '<span class="id">' + esc(p.id) + "</span>" +
+          "<strong>" + esc(p.query_2017.replace(".JPG", "")) + "</strong> → " +
+          "<strong>" + esc(p.ref_2018.replace(".JPG", "")) + "</strong>" +
+          '<span class="pill ' + esc(p.expected_tier) + '">' +
+          esc(TIER_LABEL()[p.expected_tier] || p.expected_tier) + "</span><br/>" +
+          '<span style="color:var(--muted)">' + esc(p.role) + "</span>";
+        li.addEventListener("click", () => selectPair(i));
+        pairList.appendChild(li);
+      });
+      if (pairs.length) selectPair(0);
+    }
+
+    function selectPair(i) {
+      active = pairs[i];
+      step = "side";
+      rustPreview = null;
+      bgState = null;
+      [...pairList.children].forEach((li, j) =>
+        li.classList.toggle("active", j === i)
+      );
+      renderDetail();
+      // warm rust preview name if cached from prior search pattern
+      rustPreview =
+        "rust_" +
+        active.query_2017.replace(".JPG", "") +
+        "__" +
+        active.ref_2018.replace(".JPG", "") +
+        ".jpg";
+    }
+
+    function viewUrl(year, name, view) {
+      // Stable URL → browser + disk cache; use force=1 only when regenerating.
+      return (
+        "/api/stage1/view?year=" +
+        encodeURIComponent(year) +
+        "&name=" +
+        encodeURIComponent(name) +
+        "&view=" +
+        encodeURIComponent(view)
+      );
+    }
+
+    function imgUrl(year, name) {
+      // Display path is downscaled (same budget as stage1 original).
+      return "/api/image/" + year + "/" + encodeURIComponent(name);
+    }
+
+    function renderDetail() {
+      if (!active) return;
+      const p = active;
+      const tier = p.expected_tier;
+      let html = "";
+      html +=
+        '<div class="meta">#' +
+        esc(p.id) +
+        " · <strong>2017/" +
+        esc(p.query_2017) +
+        "</strong> → <strong>2018/" +
+        esc(p.ref_2018) +
+        "</strong> · role <strong>" +
+        esc(p.role) +
+        "</strong></div>";
+      if (p.human_note) {
+        html +=
+          '<div class="hint">' +
+          t("review.humanNote") +
+          esc(p.human_note) +
+          "</div>";
+      }
+
+      html += '<div class="steps" id="stepBar">';
+      STEPS().forEach((s) => {
+        html +=
+          '<button type="button" data-step="' +
+          s.id +
+          '"' +
+          (step === s.id ? ' class="active"' : "") +
+          ">" +
+          s.label +
+          "</button>";
+      });
+      html += "</div>";
+
+      html += '<div class="actions">';
+      html +=
+        '<button type="button" id="btnRust">' + t("review.runRust") + '</button>';
+      html +=
+        '<button type="button" class="secondary" id="btnBg">' + t("review.runBg") + '</button>';
+      html += "</div>";
+
+      html += '<div id="panel">' + panelHtml(p) + "</div>";
+
+      html += '<div class="verdict">';
+      html +=
+        '<div>' + t("review.expect") + ' · <span class="tier">' +
+        esc(TIER_LABEL()[tier] || tier) +
+        "</span></div>";
+      html +=
+        '<div style="margin-top:0.35rem;color:var(--muted)">' + t("review.verdictHelp") + '</div>';
+      html += '<div class="edit-row"><label>' + t("review.editTier") + '</label>';
+      html += '<select id="tierSelect">';
+      ["escalate", "watch", "reject", "retake"].forEach((t) => {
+        html +=
+          '<option value="' +
+          t +
+          '"' +
+          (t === tier ? " selected" : "") +
+          ">" +
+          (TIER_LABEL()[t] || t) +
+          "</option>";
+      });
+      html += "</select></div>";
+      html +=
+        '<div class="edit-row"><label>' + t("review.note") + '</label><textarea id="noteEdit">' +
+        esc(p.human_note || p.note || "") +
+        "</textarea></div>";
+      html +=
+        '<div class="actions" style="margin-top:0.55rem"><button type="button" id="btnSave">' + t("review.save") + '</button></div>';
+      html += "</div>";
+
+      html += '<div class="bg-box" id="bgBox">';
+      if (bgState) {
+        html +=
+          t("review.bgLoaded") + ' · score=<strong style="color:var(--accent)">' +
+          Number(bgState.score ?? 0).toFixed(3) +
+          "</strong> · hits=" +
+          esc(bgState.hits) +
+          " · adj=" +
+          esc(bgState.adj_score) +
+          ' · <span class="warn">' + t("review.bgNoTier") + '</span>';
+        if (bgState.preview) {
+          html +=
+            "<figure style=\"margin-top:0.5rem\"><img src=\"/api/rust_preview/" +
+            encodeURIComponent(bgState.preview) +
+            "\" alt=\"bg\"/><figcaption>" + t("review.bgCap") + "</figcaption></figure>";
+        }
+      } else {
+        html += "" + t("review.bgIdle") + "";
+      }
+      html += "</div>";
+
+      detail.innerHTML = html;
+
+      document.getElementById("stepBar").addEventListener("click", (ev) => {
+        const b = ev.target.closest("button[data-step]");
+        if (!b) return;
+        step = b.dataset.step;
+        document.getElementById("panel").innerHTML = panelHtml(p);
+        [...document.querySelectorAll("#stepBar button")].forEach((x) =>
+          x.classList.toggle("active", x.dataset.step === step)
+        );
+      });
+      document.getElementById("btnRust").addEventListener("click", runRustPair);
+      document.getElementById("btnBg").addEventListener("click", runBg);
+      document.getElementById("btnSave").addEventListener("click", savePair);
+    }
+
+    function locusUrl(year, name) {
+      return "/api/rust_locus/" + year + "/" + encodeURIComponent(name);
+    }
+
+    function panelHtml(p) {
+      if (step === "side") {
+        return (
+          '<div class="hint">' + t("review.sideHint") + '</div>' +
+          '<div class="grid2">' +
+          "<figure><img src=\"" +
+          locusUrl("2017", p.query_2017) +
+          "\" alt=\"2017 locus\" onerror=\"this.src='" +
+          imgUrl("2017", p.query_2017) +
+          "'\"/><figcaption>" + t("match.locusQ") + "</figcaption></figure>" +
+          "<figure><img src=\"" +
+          locusUrl("2018", p.ref_2018) +
+          "\" alt=\"2018 locus\" onerror=\"this.src='" +
+          imgUrl("2018", p.ref_2018) +
+          "'\"/><figcaption>" + t("match.locusR") + "</figcaption></figure>" +
+          "</div>"
+        );
+      }
+      if (step === "rust") {
+        const loci =
+          '<div class="grid2">' +
+          "<figure><img src=\"" +
+          locusUrl("2017", p.query_2017) +
+          "\" alt=\"2017 locus\"/><figcaption>" + t("review.src2017") + "</figcaption></figure>" +
+          "<figure><img src=\"" +
+          locusUrl("2018", p.ref_2018) +
+          "\" alt=\"2018 locus\"/><figcaption>" + t("review.src2018") + "</figcaption></figure>" +
+          "</div>";
+        const prev = rustPreview
+          ? "<figure><img src=\"/api/rust_preview/" +
+            encodeURIComponent(rustPreview) +
+            "\" alt=\"rust\" onerror=\"this.parentNode.innerHTML='<figcaption class=warn>" +
+            t("review.noCachePreview") +
+            "</figcaption>'\"/>" +
+            "<figcaption>" + t("match.cropCap") + "</figcaption></figure>"
+          : '<div class="hint">' + t("review.needRustRun") + '</div>';
+        return loci + prev;
+      }
+      // stage1 dual view
+      return (
+        '<div class="grid2">' +
+        "<figure><img src=\"" +
+        viewUrl("2017", p.query_2017, step) +
+        "\" alt=\"2017 step\"/><figcaption>2017 · " +
+        esc(step) +
+        "</figcaption></figure>" +
+        "<figure><img src=\"" +
+        viewUrl("2018", p.ref_2018, step) +
+        "\" alt=\"2018 step\"/><figcaption>2018 · " +
+        esc(step) +
+        "</figcaption></figure>" +
+        "</div>"
+      );
+    }
+
+    async function runRustPair() {
+      const btn = document.getElementById("btnRust");
+      btn.disabled = true;
+      btn.textContent = "锈检索中…";
+      try {
+        const res = await fetch("/api/rust_search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: active.query_2017,
+            query_year: "2017",
+            gallery_year: "2018",
+            top_k: 12,
+            limit: 0,
+            gold_name: active.ref_2018,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        const hit = (data.top || []).find((x) => x.name === active.ref_2018);
+        if (hit && hit.preview) rustPreview = hit.preview;
+        else
+          rustPreview =
+            "rust_" +
+            active.query_2017.replace(".JPG", "") +
+            "__" +
+            active.ref_2018.replace(".JPG", "") +
+            ".jpg";
+        step = "rust";
+        const rank = data.gold_rank;
+        renderDetail();
+        const panel = document.getElementById("panel");
+        panel.insertAdjacentHTML(
+          "afterbegin",
+          '<div class="meta">锈检索：ref 排名 <strong>' +
+            (rank == null ? "未进榜" : "#" + rank) +
+            "</strong>" +
+            (hit
+              ? " · score " +
+                Number(hit.score).toFixed(3) +
+                " · ncc " +
+                Number(hit.ncc).toFixed(3)
+              : "") +
+            " · " +
+            (data.secs ?? "?") +
+            "s</div>"
+        );
+      } catch (e) {
+        alert(t("review.rustFail") + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "跑锈签名（这对）";
+      }
+    }
+
+    async function runBg() {
+      const btn = document.getElementById("btnBg");
+      btn.disabled = true;
+      btn.textContent = "背景计算中…";
+      try {
+        // optional: 2018 sunny → 2017 on the same pair
+        const res = await fetch("/api/bg_pair_debug", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: active.ref_2018,
+            ref: active.query_2017,
+            query_year: "2018",
+            gallery_year: "2017",
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        bgState = data;
+        renderDetail();
+      } catch (e) {
+        alert(t("review.bgFail") + e.message);
+      } finally {
+        const b = document.getElementById("btnBg");
+        if (b) {
+          b.disabled = false;
+          b.textContent = "可选：背景站位参考（2018→2017）";
+        }
+      }
+    }
+
+    async function savePair() {
+      const tier = document.getElementById("tierSelect").value;
+      const note = document.getElementById("noteEdit").value;
+      const res = await fetch("/api/eval/pairs/" + encodeURIComponent(active.id), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expected_tier: tier, human_note: note }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || res.statusText);
+        return;
+      }
+      const i = pairs.findIndex((x) => x.id === active.id);
+      if (i >= 0) pairs[i] = data.pair;
+      active = data.pair;
+      // refresh list labels
+      const idx = pairs.findIndex((x) => x.id === active.id);
+      loadPairs().then(() => {
+        if (idx >= 0) selectPair(idx);
+      });
+    }
+
+    onChange(() => {
+      applyDom();
+      const keep = active ? active.id : null;
+      loadPairs().then(() => {
+        if (!keep) return;
+        const i = pairs.findIndex((x) => x.id === keep);
+        if (i >= 0) selectPair(i);
+      });
+    });
+    loadPairs().catch((e) => {
+      listMeta.innerHTML = '<span class="fail">' + esc(e.message) + "</span>";
+    });
+  </script>
+</body>
+</html>

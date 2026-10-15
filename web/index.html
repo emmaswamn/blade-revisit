@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="index.title">blade-revisit · stage debug</title>
+  <style>
+    :root {
+      --bg: #1a1d23; --panel: #242830; --text: #e8eaed; --muted: #9aa0a6;
+      --accent: #6ec6ff; --ok: #81c995; --warn: #fdd663; --bad: #f28b82; --todo: #5f6368;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "IBM Plex Sans", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 0.85rem 1.25rem; border-bottom: 1px solid #333842; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 1.05rem; }
+    header a { color: var(--accent); font-size: 0.85rem; }
+    .stages { display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.75rem 1.25rem; border-bottom: 1px solid #333842; background: #1e2229; }
+    .stage-chip {
+      border: 1px solid #3c424d; border-radius: 6px; padding: 0.45rem 0.7rem; min-width: 9rem;
+      background: var(--panel); font-size: 0.8rem;
+    }
+    .stage-chip .id { font-weight: 700; color: var(--accent); margin-right: 0.35rem; }
+    .stage-chip.doing { border-color: #5a7a3a; }
+    .stage-chip.todo { opacity: 0.55; }
+    .stage-chip.done { border-color: #3a7a5a; }
+    .badge { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+    main { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; min-height: calc(100vh - 130px); }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    aside { border-right: 1px solid #333842; background: var(--panel); overflow: auto; }
+    .block { padding: 0.75rem 1rem; border-bottom: 1px solid #333842; }
+    .block h2 { margin: 0 0 0.5rem; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    label.field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+    select, input, button {
+      background: #1a1d23; border: 1px solid #3c424d; color: var(--text);
+      border-radius: 4px; padding: 0.4rem 0.55rem; font-size: 0.85rem;
+    }
+    button { cursor: pointer; background: #2b5278; border-color: #3d6d9c; width: 100%; }
+    button.secondary { background: #2a2f38; margin-top: 0.4rem; }
+    button:disabled { opacity: 0.5; }
+    .views { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.4rem; }
+    .views button { width: auto; padding: 0.3rem 0.55rem; font-size: 0.75rem; }
+    .views button.active { background: #3d6d9c; }
+    .views button.lit-hidden { display: none; }
+    .lit-banner {
+      font-size: 0.75rem; color: var(--muted); margin-top: 0.45rem;
+      padding: 0.35rem 0.5rem; border: 1px dashed #3c424d; border-radius: 4px;
+    }
+    .lit-banner strong { color: var(--accent); }
+    section.detail { padding: 1rem 1.25rem; overflow: auto; }
+    .meta { font-size: 0.85rem; margin-bottom: 0.75rem; color: var(--muted); }
+    .meta strong { color: var(--accent); }
+    .hint { font-size: 0.8rem; color: var(--warn); margin-bottom: 0.75rem; }
+    figure { margin: 0; background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #333842; }
+    figure img { display: block; width: 100%; height: auto; }
+    figcaption { padding: 0.4rem 0.6rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid #333842; }
+    .steps { list-style: none; margin: 0.75rem 0; padding: 0; border: 1px solid #333842; border-radius: 6px; }
+    .steps li { padding: 0.4rem 0.7rem; border-bottom: 1px solid #2e333c; font-size: 0.8rem; display: grid; grid-template-columns: 6rem 3rem 1fr; gap: 0.4rem; }
+    .steps li:last-child { border-bottom: 0; }
+    .ok { color: var(--ok); } .fail { color: var(--bad); }
+    .collapsed { opacity: 0.7; font-size: 0.8rem; }
+    .search-box details { margin-top: 0.25rem; }
+    .search-box summary { cursor: pointer; color: var(--muted); font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="index.h1">blade-revisit · 分阶段调试</h1>
+    <span id="navLinks" style="display:flex;gap:1rem;align-items:center">
+      <a href="/review" data-i18n="nav.review">评审 15 对</a>
+      <a href="/match" data-i18n="nav.match">锈签名 2017→2018</a>
+      <a href="/bg" data-i18n="nav.bg">背景站位 2018→2017</a>
+    </span>
+  </header>
+  <div class="stages" id="stageBar"></div>
+  <main>
+    <aside>
+      <div class="block">
+        <h2 data-i18n="index.pick">选图（阶段 1 单张）</h2>
+        <label class="field"><span data-i18n="index.year">年份</span>
+          <select id="yearSelect">
+            <option value="2018">2018</option>
+            <option value="2017">2017</option>
+          </select>
+        </label>
+        <label class="field"><span data-i18n="index.file">文件</span>
+          <select id="nameSelect"></select>
+        </label>
+        <div class="hint" id="nameHint" data-i18n="index.loadingNear">近景筛选加载中…</div>
+        <label class="field" style="flex-direction:row;align-items:center;gap:0.45rem;margin-bottom:0.55rem">
+          <input id="usableOnly" type="checkbox" checked style="width:auto;margin:0" />
+          <span style="color:var(--text);font-size:0.8rem" data-i18n="index.usableOnly">排除边不可读（0687 类）</span>
+        </label>
+        <button type="button" id="analyzeBtn" data-i18n="index.run">跑 1.0 + 1.1 + 1.2</button>
+        <div class="lit-banner" id="litBanner" data-i18n="index.litBanner" data-i18n-mode="html">跑完后按 sunny / overcast 显隐视图按钮</div>
+        <div class="views" id="viewBtns">
+          <!-- data-lit: both | sunny | overcast — 未跑完前全显示 -->
+          <button type="button" data-view="original" data-lit="both" data-i18n="view.original">原图</button>
+          <button type="button" data-view="lighting" data-lit="both" class="active" data-i18n="view.lighting">1.0 光照</button>
+          <button type="button" data-view="sky_water" data-lit="overcast" data-i18n="view.sky_water">1.0b 天/水抠除</button>
+          <button type="button" data-view="sunny_water" data-lit="sunny" data-i18n="view.sunny_water">1.0b 晴天水禁</button>
+          <button type="button" data-view="edge_seed" data-lit="overcast" data-i18n="view.edge_seed">1.0c 边障+种子</button>
+          <button type="button" data-view="seed" data-lit="both" data-i18n="view.seed">1.1a 几何种子</button>
+          <button type="button" data-view="seed_aux" data-lit="none" data-i18n="view.seed_aux" data-i18n-title="view.seed_aux_title" title="已证伪，默认隐藏">1.1a 辅助线</button>
+          <button type="button" data-view="refine_delta" data-lit="both" data-i18n="view.refine_delta">1.1b 内填/白扩</button>
+          <button type="button" data-view="geo2" data-lit="both" data-i18n="view.geo2">1.1c 二步几何</button>
+          <button type="button" data-view="tip_need" data-lit="sunny" data-i18n="view.tip_need">1.1d 尖端判断</button>
+          <button type="button" data-view="tip_edge" data-lit="sunny" data-i18n="view.tip_edge">1.1e 叶尖边缘</button>
+          <button type="button" data-view="expand_lines" data-lit="overcast" data-i18n="view.expand_lines">1.3a 扩线(3a-3d)</button>
+          <button type="button" data-view="expand_trap" data-lit="overcast" data-i18n="view.expand_trap">1.3c 梯形探边</button>
+          <button type="button" data-view="expand_delta" data-lit="overcast" data-i18n="view.expand_delta">1.3b 闭合填</button>
+          <button type="button" data-view="overlay" data-lit="both" data-i18n="view.overlay">1.1 最终 mask</button>
+          <button type="button" data-view="blade" data-lit="both" data-i18n="view.blade">1.1 只风机</button>
+          <button type="button" data-view="kps_masked" data-lit="both" data-i18n="view.kps_masked">1.2 mask 内点</button>
+          <button type="button" data-view="kps_full" data-lit="both" data-i18n="view.kps_full">对照·全图点</button>
+        </div>
+      </div>
+      <div class="block search-box">
+        <h2 data-i18n="index.searchBox">跨年检索（锈签名主线）</h2>
+        <p class="hint" style="margin:0.35rem 0" data-i18n="index.searchHint" data-i18n-mode="html"></p>
+        <details>
+          <summary data-i18n="index.legacySummary">展开（旧 ORB 2018→2017 · 非主线）</summary>
+          <label class="field" style="margin-top:0.5rem"><span data-i18n="index.refLimit">2017 usable 池上限（0=全池）</span>
+            <input id="refLimit" type="number" value="0" min="0" max="500" />
+          </label>
+          <label class="field"><span data-i18n="index.topK">Top-K</span>
+            <input id="topK" type="number" value="5" min="1" max="20" />
+          </label>
+          <button type="button" class="secondary" id="searchBtn" data-i18n="index.legacySearch">旧路径 2018→2017</button>
+          <div class="meta" id="searchLog"></div>
+        </details>
+      </div>
+    </aside>
+    <section class="detail" id="detail">
+      <div class="hint" data-i18n="index.bootHint" data-i18n-mode="html"></div>
+      <div class="meta" data-i18n="index.bootMeta"></div>
+    </section>
+  </main>
+  <script src="/static/i18n.js"></script>
+  <script>
+    const { t, onChange, applyDom, mountToggle } = BladeI18n;
+    const yearSelect = document.getElementById("yearSelect");
+    const nameSelect = document.getElementById("nameSelect");
+    const detail = document.getElementById("detail");
+    let currentView = "lighting";
+    let lastMeta = null;
+    let lastLighting = null; // "sunny" | "overcast" | null
+
+    function stageClass(s) { return "stage-chip " + (s || "todo"); }
+
+    function applyLightingViews(lighting) {
+      lastLighting = lighting || null;
+      const banner = document.getElementById("litBanner");
+      const btns = [...document.getElementById("viewBtns").querySelectorAll("button[data-view]")];
+      if (!lighting) {
+        btns.forEach((b) => {
+          const lit = b.dataset.lit || "both";
+          b.classList.toggle("lit-hidden", lit === "none");
+        });
+        if (banner) banner.innerHTML = t("index.litBanner");
+        return;
+      }
+      btns.forEach((b) => {
+        const lit = b.dataset.lit || "both";
+        const show = lit === "both" || lit === lighting;
+        b.classList.toggle("lit-hidden", !show);
+      });
+      if (banner) {
+        banner.innerHTML = lighting === "overcast" ? t("index.litOc") : t("index.litSu");
+      }
+      // if current view hidden for this lighting, fall back to final mask
+      const active = btns.find((b) => b.dataset.view === currentView);
+      if (active && active.classList.contains("lit-hidden")) {
+        currentView = "overlay";
+        btns.forEach((b) => b.classList.toggle("active", b.dataset.view === currentView));
+      }
+    }
+
+    async function loadStages() {
+      const res = await fetch("/api/stages");
+      const data = await res.json();
+      const bar = document.getElementById("stageBar");
+      bar.innerHTML = "";
+      for (const s of data.stages) {
+        const div = document.createElement("div");
+        div.className = stageClass(s.status);
+        const title = t("stage." + s.id + ".title");
+        const blurb = t("stage." + s.id + ".blurb");
+        div.innerHTML = '<span class="id">' + s.id + "</span>" + title +
+          '<div class="badge">' + s.status + " · " + blurb + "</div>";
+        bar.appendChild(div);
+      }
+    }
+
+    async function loadNames() {
+      const year = yearSelect.value;
+      const usableOnly = document.getElementById("usableOnly")?.checked !== false;
+      const res = await fetch(
+        "/api/images/" + year + "?limit=500&near_only=true&usable_only=" + usableOnly
+      );
+      const data = await res.json();
+      nameSelect.innerHTML = "";
+      for (const im of data.images) {
+        const opt = document.createElement("option");
+        opt.value = im.name;
+        opt.textContent = im.name;
+        nameSelect.appendChild(opt);
+      }
+      const hint = document.getElementById("nameHint");
+      if (hint && data.filter) {
+        const f = data.filter;
+        if (data.usable_only) {
+          hint.textContent = t("index.usableHint") + " " + data.images.length +
+            " / " + t("index.nearHint") + " " + (f.near || "?") +
+            " / " + t("index.total") + " " + (f.total || "?") +
+            " (" + t("index.rejected") + " " + (f.rejected || 0) +
+            " · " + t("index.far") + " " + (f.far || 0) +
+            (f.cached ? " · " + t("index.cached") : "") + ")";
+        } else {
+          hint.textContent = t("index.nearHint") + " " + data.images.length +
+            " / " + t("index.total") + " " + (f.total || "?") +
+            " (" + t("index.far") + " " + (f.far || 0) +
+            (f.cached ? " · " + t("index.cached") : "") + ")";
+        }
+      } else if (hint) {
+        hint.textContent = (usableOnly ? t("index.usableHint") : t("index.nearHint")) +
+          " " + data.images.length + t("index.shots");
+      }
+      const prefer = year === "2018" ? "DJI_0190.JPG" : "DJI_0752.JPG";
+      if ([...nameSelect.options].some((o) => o.value === prefer)) {
+        nameSelect.value = prefer;
+      }
+    }
+
+    function viewUrl(view) {
+      const q = new URLSearchParams({
+        year: yearSelect.value,
+        name: nameSelect.value,
+        view,
+      });
+      return "/api/stage1/view?" + q.toString();
+    }
+
+    function downloadViewFilename(view) {
+      const base = (nameSelect.value || "shot").replace(/\.[^.]+$/, "");
+      return base + "_" + view + ".jpg";
+    }
+
+    function refreshDownloadLink() {
+      const a = document.getElementById("downloadView");
+      if (!a) return;
+      a.href = viewUrl(currentView);
+      a.download = downloadViewFilename(currentView);
+    }
+
+    function renderDetail(meta) {
+      lastMeta = meta;
+      const lit = meta.lighting || {};
+      const litKey = (lit.label === "sunny" || lit.label === "overcast")
+        ? lit.label
+        : null;
+      applyLightingViews(litKey);
+
+      const m = meta.mask;
+      const k = meta.keypoints;
+      const w = meta.white_refine || {};
+      const g2 = meta.geo2 || {};
+      const tn = meta.tip_need || {};
+      const te = meta.tip_edge || {};
+      const isOc = litKey === "overcast";
+      const isSu = litKey === "sunny";
+
+      const litf = lit.label
+        ? ("光照：" + lit.label +
+           " · sky_v=" + Number(lit.sky_v).toFixed(0) +
+           " sky_std=" + Number(lit.sky_std).toFixed(1) +
+           " sky_s=" + Number(lit.sky_s).toFixed(0) +
+           " · contrast=" + Number(lit.contrast).toFixed(1) +
+           " lap=" + Number(lit.lap).toFixed(0) +
+           " veg=" + Number(lit.veg_frac).toFixed(2) +
+           " · su=" + Number(lit.score_sunny).toFixed(1) +
+           "/oc=" + Number(lit.score_overcast).toFixed(1) +
+           (lit.year_bias_used ? " · year_bias" : "") +
+           "（黄框天空 · 青框水面 · 品红植被）")
+        : "";
+      const wf = (typeof w.white_frac === "number")
+        ? (w.interior_fill || w.skipped
+           ? ("1.1b 阴天内填 · 种子 " + w.seed_px +
+              " → 填入 +" + w.added_px +
+              " · 拒填 " + (w.reject_px || 0) +
+              " · wf=" + w.white_frac.toFixed(2) +
+              "（青=种子，红=轮廓内填，橙=拒填；外扩→1.3）")
+           : ("白扩：white_frac=" + w.white_frac.toFixed(2) +
+              " dmax=" + Math.round(w.max_dist) +
+              "px · 种子 " + w.seed_px +
+              " → 新增 " + w.added_px +
+              "（青=起点，红=白扩补上的，黄线=dmax）"))
+        : "";
+      const g2f = g2.note
+        ? ("二步几何：" + g2.mode +
+           " · 砍 " + g2.cut_px +
+           " · 留白扩 " + g2.keep_add_px +
+           "（青=种子，绿=保留，红=砍掉，品红=中心线/尖射线，黄点=尖包络）")
+        : "";
+      const tnf = (isSu && tn.reason)
+        ? ("尖端判断：" + (tn.needed ? "YES 要补" : "NO 不补") +
+           " · " + tn.reason +
+           " · elong=" + (tn.elong != null ? Number(tn.elong).toFixed(1) : "?") +
+           " tip_w=" + (tn.tip_w != null ? Number(tn.tip_w).toFixed(1) : "?") +
+           " gap=" + tn.paint_gap)
+        : "";
+      const tef = (isSu && te.note)
+        ? ("叶尖边缘：" + te.note +
+           " · 补 " + te.add_px + "px" +
+           " · L/R " + te.left_n + "/" + te.right_n +
+           (te.needed ? "（黄框=ROI，白=Canny，橙/蓝=左右边）" : "（门控关闭，未追边）"))
+        : "";
+      const ex = meta.expand_lines || {};
+      const exf = (isOc && ex.note)
+        ? ("1.3a 扩线：" + (ex.paired ? "成对" : "单侧/假想") +
+           " · ring " + ex.n_ring +
+           " · L/R " + (ex.has_left ? "Y" : "n") + "/" + (ex.has_right ? "Y" : "n") +
+           (ex.has_phantom ? " · phantom" : "") +
+           "（原黄/橙保留）")
+        : "";
+      const et = meta.expand_trap || {};
+      const etf = (isOc && typeof et.n_traps === "number")
+        ? ("1.3c 梯形探边：traps " + et.n_traps +
+           " · accept " + et.n_accept +
+           " · reject " + et.n_reject +
+           "（黄框=梯形，白=Canny，绿=新缘，品红圈=尖端终点，红=拒天/植/水）")
+        : "";
+      const ec = meta.expand_close || {};
+      const ecf = (isOc && typeof ec.add_px === "number")
+        ? ("1.3b 闭合：" + (ec.mode || "hull") +
+           (ec.gate ? (" · " + ec.gate) : "") +
+           " → +" + ec.add_px + "px · poly " + ec.hull_n +
+           "（青=1.1b，红=新增，品红=闭合线）")
+        : "";
+      const usable = meta.usable || {};
+      const usableLine = (usable.ok === false)
+        ? ('<div class="meta fail">' + t("index.usableReject") + " · " +
+           (usable.reason || m.reject_reason || "?") + "</div>")
+        : ('<div class="meta ok">' + t("index.usableKeep") +
+           (usable.reason ? (" · " + usable.reason) : "") + "</div>");
+      const branchHint = isOc
+        ? t("index.branchOc")
+        : (isSu ? t("index.branchSu") : t("index.branchIdle"));
+      // Deep step telemetry stays as returned (debug); chrome + branch are bilingual.
+      detail.innerHTML =
+        '<div class="hint">' + branchHint + "</div>" +
+        '<div class="meta">' +
+        meta.year + " / <strong>" + meta.name + "</strong> · mask coverage <strong>" +
+        (m.coverage * 100).toFixed(1) + "%</strong> · components <strong>" + m.components +
+        "</strong> · kps full <strong>" + k.full_frame + "</strong> → masked <strong>" + k.masked +
+        "</strong> (" + k.detector + ")</div>" +
+        usableLine +
+        (litf ? '<div class="meta">' + litf + "</div>" : "") +
+        (wf ? '<div class="meta">' + wf + "</div>" : "") +
+        (g2f ? '<div class="meta">' + g2f + "</div>" : "") +
+        (tnf ? '<div class="meta">' + tnf + "</div>" : "") +
+        (tef ? '<div class="meta">' + tef + "</div>" : "") +
+        (exf ? '<div class="meta">' + exf + "</div>" : "") +
+        (etf ? '<div class="meta">' + etf + "</div>" : "") +
+        (ecf ? '<div class="meta">' + ecf + "</div>" : "") +
+        '<ul class="steps">' +
+        meta.steps.map((s) =>
+          "<li><span>" + s.stage + "</span><span class='" + s.status + "'>" + s.status +
+          "</span><span>" + s.detail + "</span></li>"
+        ).join("") +
+        "</ul>" +
+        "<figure><img id='mainImg' src='" + viewUrl(currentView) + "' alt='stage1'/>" +
+        "<figcaption>" + t("index.view") + ": " + currentView + " · " + (lit.detail || m.detail || "") +
+        " · <a id='downloadView' href='" + viewUrl(currentView) + "' download='" +
+        downloadViewFilename(currentView) + "'>" + t("index.download") + "</a></figcaption></figure>";
+    }
+
+    document.getElementById("analyzeBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("analyzeBtn");
+      btn.disabled = true;
+      try {
+        const q = new URLSearchParams({ year: yearSelect.value, name: nameSelect.value });
+        const res = await fetch("/api/stage1/meta?" + q.toString());
+        const meta = await res.json();
+        if (!res.ok) throw new Error(meta.detail || res.statusText);
+        renderDetail(meta);
+      } catch (e) {
+        detail.innerHTML = '<div class="fail">' + t("index.fail") + e.message + "</div>";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById("viewBtns").addEventListener("click", (ev) => {
+      const btn = ev.target.closest("button[data-view]");
+      if (!btn || btn.classList.contains("lit-hidden")) return;
+      currentView = btn.dataset.view;
+      [...document.getElementById("viewBtns").querySelectorAll("button")].forEach((b) =>
+        b.classList.toggle("active", b === btn)
+      );
+      const img = document.getElementById("mainImg");
+      if (img) {
+        img.src = viewUrl(currentView);
+        refreshDownloadLink();
+        const cap = img.parentElement.querySelector("figcaption");
+        if (cap && !document.getElementById("downloadView")) {
+          cap.textContent = t("index.view") + ": " + currentView;
+        }
+      } else {
+        document.getElementById("analyzeBtn").click();
+      }
+    });
+
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+      if (yearSelect.value !== "2018") {
+        document.getElementById("searchLog").textContent = t("index.searchNeed2018");
+        return;
+      }
+      const log = document.getElementById("searchLog");
+      log.textContent = t("index.searching");
+      try {
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: nameSelect.value,
+            top_k: Number(document.getElementById("topK").value) || 5,
+            ref_limit: Number(document.getElementById("refLimit").value) || 0,
+          }),
+        });
+        const data = await res.json();
+        log.textContent = data.skipped
+          ? "SKIP · " + data.reason
+          : t("index.searchDone") + " · " + (data.pair_ids || []).length;
+      } catch (e) {
+        log.textContent = t("index.fail") + e.message;
+      }
+    });
+
+    yearSelect.addEventListener("change", () => loadNames());
+    document.getElementById("usableOnly")?.addEventListener("change", () => loadNames());
+    mountToggle(document.getElementById("navLinks"));
+    applyDom();
+    onChange(() => {
+      applyDom();
+      loadStages();
+      if (lastMeta) renderDetail(lastMeta);
+      else applyLightingViews(lastLighting);
+    });
+    applyLightingViews(null);
+    loadStages().then(loadNames);
+  </script>
+</body>
+</html>

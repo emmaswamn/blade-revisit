@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="bg.title">blade-revisit · background prior</title>
+  <style>
+    :root {
+      --bg: #1a1d23; --panel: #242830; --text: #e8eaed; --muted: #9aa0a6;
+      --accent: #6ec6ff; --ok: #81c995; --warn: #fdd663; --bad: #f28b82;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "IBM Plex Sans", "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+    header { padding: 0.85rem 1.25rem; border-bottom: 1px solid #333842; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; justify-content: space-between; }
+    header h1 { margin: 0; font-size: 1.05rem; }
+    header a { color: var(--accent); font-size: 0.85rem; margin-left: 0.75rem; }
+    main { display: grid; grid-template-columns: minmax(280px, 340px) 1fr; min-height: calc(100vh - 60px); }
+    @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+    aside { border-right: 1px solid #333842; background: var(--panel); overflow: auto; }
+    .block { padding: 0.75rem 1rem; border-bottom: 1px solid #333842; }
+    .block h2 { margin: 0 0 0.5rem; font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    label.field { display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.75rem; color: var(--muted); margin-bottom: 0.5rem; }
+    select, input, button {
+      background: #1a1d23; border: 1px solid #3c424d; color: var(--text);
+      border-radius: 4px; padding: 0.4rem 0.55rem; font-size: 0.85rem;
+    }
+    button { cursor: pointer; background: #2b5278; border-color: #3d6d9c; width: 100%; }
+    button:disabled { opacity: 0.5; }
+    .hint { font-size: 0.8rem; color: var(--warn); margin: 0.4rem 0; line-height: 1.35; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-top: 0.4rem; }
+    .meta strong { color: var(--accent); }
+    section.detail { padding: 1rem 1.25rem; overflow: auto; }
+    .pairs { list-style: none; margin: 0.75rem 0; padding: 0; border: 1px solid #333842; border-radius: 6px; }
+    .pairs li {
+      padding: 0.55rem 0.7rem; border-bottom: 1px solid #2e333c; font-size: 0.8rem;
+      display: grid; grid-template-columns: 2rem 1fr; gap: 0.5rem; align-items: center;
+      cursor: pointer;
+    }
+    .pairs li:last-child { border-bottom: 0; }
+    .pairs li:hover, .pairs li.active { background: #2a3140; }
+    .pairs .rank { color: var(--accent); font-weight: 700; }
+    .ok { color: var(--ok); } .fail { color: var(--bad); } .warn { color: var(--warn); }
+    figure { margin: 0.75rem 0 0; background: #111; border-radius: 6px; overflow: hidden; border: 1px solid #333842; }
+    figure img { display: block; width: 100%; height: auto; }
+    figcaption { padding: 0.4rem 0.6rem; font-size: 0.75rem; color: var(--muted); border-top: 1px solid #333842; }
+    .thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+    .thumbs.quad { grid-template-columns: 1fr 1fr; }
+    .thumbs figure { margin: 0; }
+    .thumbs figcaption { font-size: 0.72rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="bg.h1">背景站位 · 2018 → 2017</h1>
+    <span id="navLinks" style="display:flex;gap:0.75rem;align-items:center">
+      <a href="/review" data-i18n="nav.review">评审 15 对</a>
+      <a href="/" data-i18n="nav.stageShort">阶段 1</a>
+      <a href="/match" data-i18n="nav.matchShort">锈签名</a>
+    </span>
+  </header>
+  <main>
+    <aside>
+      <div class="block">
+        <h2 data-i18n="bg.pick">选 2018 查询图（晴天背景更清楚）</h2>
+        <label class="field"><span data-i18n="bg.file">文件</span>
+          <select id="nameSelect"></select>
+        </label>
+        <div class="meta" id="nameHint" data-i18n="bg.loading">加载中…</div>
+        <label class="field"><span data-i18n="bg.method">方法</span>
+          <select id="methodSelect">
+            <option value="blocks" selected data-i18n="bg.methodBlocks">blocks · 色块多锚投票（v2）</option>
+            <option value="hsv" data-i18n="bg.methodHsv">hsv · 网格直方图（v1）</option>
+          </select>
+        </label>
+        <label class="field"><span data-i18n="bg.refLimit">2017 usable 上限（0=全池）</span>
+          <input id="refLimit" type="number" value="0" min="0" max="500" />
+        </label>
+        <label class="field"><span data-i18n="bg.topK">Top-K</span>
+          <input id="topK" type="number" value="8" min="1" max="30" />
+        </label>
+        <button type="button" id="searchBtn" data-i18n="bg.search">背景站位检索</button>
+        <p class="hint" data-i18n="bg.hint" data-i18n-mode="html"></p>
+      </div>
+    </aside>
+    <section class="detail" id="detail">
+      <div class="hint" data-i18n="bg.boot"></div>
+      <div class="meta" data-i18n="bg.idle"></div>
+    </section>
+  </main>
+  <script src="/static/i18n.js"></script>
+  <script>
+    const { t, onChange, applyDom, mountToggle } = BladeI18n;
+    mountToggle(document.getElementById("navLinks"));
+    applyDom();
+
+    const nameSelect = document.getElementById("nameSelect");
+    const detail = document.getElementById("detail");
+    let lastTop = [];
+    let lastMeta = {};
+
+    async function loadNames() {
+      const res = await fetch("/api/images/2018?limit=500&near_only=true&usable_only=true");
+      const data = await res.json();
+      nameSelect.innerHTML = "";
+      for (const im of data.images || []) {
+        const opt = document.createElement("option");
+        opt.value = im.name;
+        opt.textContent = im.name;
+        nameSelect.appendChild(opt);
+      }
+      if ([...nameSelect.options].some((o) => o.value === "DJI_0190.JPG")) {
+        nameSelect.value = "DJI_0190.JPG";
+      }
+      document.getElementById("nameHint").textContent =
+        "2018 usable " + (data.images || []).length + t("bg.galleryLine");
+    }
+
+    function scoreLabel(p, method) {
+      if ((method || "").includes("v2") || (lastMeta.method || "").includes("v2")) {
+        const hits = p.hits != null ? p.hits : "?";
+        const sc = (p.score == null) ? "n/a" : Number(p.score).toFixed(2);
+        const adj = p.adj_score != null ? " · adj " + Number(p.adj_score).toFixed(2) : "";
+        return "hits " + hits + " · score " + sc + adj;
+      }
+      const cos = (p.score == null) ? "n/a" : Number(p.score).toFixed(3);
+      return "cos " + cos;
+    }
+
+    function renderResults(data) {
+      lastTop = data.top || [];
+      lastMeta = data;
+      const gold = data.gold_name || "DJI_0752.JPG";
+      const goldRank = data.gold_rank;
+      const method = data.method || "?";
+      let html =
+        '<div class="hint">query <strong>' + (data.query || "") +
+        "</strong> → 2017 usable ×" + (data.gallery_n ?? "?") +
+        " · <strong>" + method + "</strong> · Top-" + lastTop.length +
+        (goldRank
+          ? (goldRank <= 3
+              ? ' · <span class="ok">' + t("bg.gold") + ' ' + gold + " = #" + goldRank + "</span>"
+              : ' · <span class="warn">' + t("bg.gold") + ' ' + gold + " = #" + goldRank + "</span>")
+          : ' · <span class="fail">' + t("bg.goldMiss") + '</span>') +
+        " · " + (data.secs ?? "?") + "s</div>";
+      html += '<div class="meta">' + (data.direction_note || "") +
+        " · cache hit=" + (data.cache_hit ?? "?") +
+        " mem=" + (data.cache_mem ?? "0") +
+        " miss=" + (data.cache_miss ?? "?") +
+        t("bg.cacheNote") + "</div>";
+      if (data.query_anchors && data.query_anchors.length) {
+        html += '<div class="meta">query 锚：' +
+          data.query_anchors.map((a) => "#" + a.idx + a.label[0]).join(" ") +
+          "</div>";
+      }
+      html += '<ul class="pairs" id="pairList">';
+      lastTop.forEach((p, i) => {
+        const isGold = (p.name || "") === gold;
+        const pairHint = (p.pairs && p.pairs.length)
+          ? "<br/><span class='meta'>" + p.pairs.map((x) =>
+              "q#" + x.q + "→r#" + x.r + "(" + x.q_label + "/" + x.r_label + ")"
+            ).join(" · ") + "</span>"
+          : "";
+        const adjHint = (p.adj_pairs && p.adj_pairs.length)
+          ? "<br/><span class='meta'>adj " + Number(p.adj_score || 0).toFixed(2) +
+            ": " + p.adj_pairs.map((x) => x.q + "≈" + x.r).join(" · ") + "</span>"
+          : (p.adj_score != null
+              ? "<br/><span class='meta'>adj " + Number(p.adj_score).toFixed(2) + "</span>"
+              : "");
+        html +=
+          '<li data-idx="' + i + '">' +
+          '<span class="rank">#' + (p.rank || i + 1) + "</span>" +
+          "<span><strong>" + (p.name || "?") + "</strong>" +
+          (isGold ? ' <span class="ok">GOLD</span>' : "") +
+          "<br/>" + scoreLabel(p, method) + " · bg_frac " +
+          (p.bg_frac != null ? Number(p.bg_frac).toFixed(2) : "?") +
+          pairHint + adjHint +
+          "</span></li>";
+      });
+      html += "</ul><div id='pairDetail'><div class='meta'>点一条看原图 / 色块叠图。</div></div>";
+      detail.innerHTML = html;
+      document.getElementById("pairList").addEventListener("click", (ev) => {
+        const li = ev.target.closest("li[data-idx]");
+        if (!li) return;
+        [...document.querySelectorAll("#pairList li")].forEach((x) =>
+          x.classList.toggle("active", x === li)
+        );
+        showPair(Number(li.dataset.idx));
+      });
+      if (lastTop.length) {
+        document.querySelector("#pairList li")?.classList.add("active");
+        showPair(0);
+      }
+    }
+
+    async function showPair(idx) {
+      const p = lastTop[idx];
+      if (!p) return;
+      const qid = lastMeta.query_id || nameSelect.value;
+      const rid = p.name || "";
+      const qy = lastMeta.query_year || "2018";
+      const gy = lastMeta.gallery_year || "2017";
+      const box = document.getElementById("pairDetail");
+      const useBlocks = (lastMeta.method || "").includes("v2") ||
+        document.getElementById("methodSelect").value === "blocks";
+      let grid =
+        '<div class="thumbs quad">' +
+        "<figure><img src='/api/image/" + qy + "/" + encodeURIComponent(qid) +
+        "'/><figcaption>① " + qy + " query</figcaption></figure>" +
+        "<figure><img src='/api/image/" + gy + "/" + encodeURIComponent(rid) +
+        "'/><figcaption>② " + gy + " match</figcaption></figure>";
+      if (useBlocks) {
+        grid +=
+          "<figure><img src='/api/bg_blocks/" + qy + "/" + encodeURIComponent(qid) +
+          "'/><figcaption>③ " + qy + " blocks</figcaption></figure>" +
+          "<figure><img src='/api/bg_blocks/" + gy + "/" + encodeURIComponent(rid) +
+          "'/><figcaption>④ " + gy + " blocks</figcaption></figure>";
+      }
+      grid += "</div>";
+      box.innerHTML =
+        '<div class="meta">#' + (p.rank || idx + 1) +
+        " · <strong>" + qy + "/" + qid + "</strong> → <strong>" + gy + "/" + rid +
+        "</strong> · " + scoreLabel(p, lastMeta.method) +
+        (useBlocks ? " · 四图 + 匹配纹理（同色 M#）" : "") +
+        "</div>" + grid +
+        (useBlocks ? '<div class="meta" id="texHint">正在标可能相似的纹理…</div>' : "");
+      if (!useBlocks) return;
+      try {
+        const res = await fetch("/api/bg_pair_debug", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: qid,
+            ref: rid,
+            query_year: qy,
+            gallery_year: gy,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        const hint = document.getElementById("texHint");
+        if (hint) hint.remove();
+        box.innerHTML +=
+          "<figure><img src='/api/rust_preview/" + encodeURIComponent(data.preview) +
+          "' alt='tex'/><figcaption>" +
+          "⑤ 同色 M# = 算法认为可能相似 · 下方裁剪块内纹理（左 Q / 右 R）· hits=" +
+          (data.hits ?? "?") + " adj=" + (data.adj_score ?? "?") +
+          "</figcaption></figure>";
+      } catch (e) {
+        const hint = document.getElementById("texHint");
+        if (hint) hint.innerHTML = '<span class="fail">纹理调视图失败：' + e.message + "</span>";
+      }
+    }
+
+    document.getElementById("searchBtn").addEventListener("click", async () => {
+      const btn = document.getElementById("searchBtn");
+      btn.disabled = true;
+      const method = document.getElementById("methodSelect").value;
+      detail.innerHTML =
+        '<div class="hint">' + t("bg.searching") + ' 首次建 2017 ' +
+        (method === "blocks" ? "bg_sig_v2.2 色块" : "bg_sig_v1 HSV") +
+        " 签名会跑 mask，之后读缓存。</div>";
+      try {
+        const res = await fetch("/api/bg_search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            query: nameSelect.value,
+            query_year: "2018",
+            gallery_year: "2017",
+            top_k: Number(document.getElementById("topK").value) || 8,
+            limit: Number(document.getElementById("refLimit").value) || 0,
+            gold_name: "DJI_0752.JPG",
+            method: method,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || res.statusText);
+        renderResults(data);
+      } catch (e) {
+        detail.innerHTML = '<div class="fail">' + t("bg.fail") + e.message + "</div>";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    onChange(() => { applyDom(); if (lastTop.length) renderResults(lastMeta); });
+    loadNames();
+  </script>
+</body>
+</html>

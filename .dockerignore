@@ -1,0 +1,13 @@
+.venv
+.git
+__pycache__
+*.pyc
+data/debug_preview
+data/gallery_features
+data/overlays
+data/s3_cache
+data/results.db
+data/_debug*
+*.npz
+.cursor
+agent-transcripts

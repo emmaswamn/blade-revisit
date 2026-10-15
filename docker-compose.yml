@@ -1,0 +1,63 @@
+# Graviton / t4g：固定 ACR 镜像 + 宿主机代码热挂载（改 api/src/web 不必 rebuild）
+# 用法（实例上，仓库目录旁要有本文件与代码树）：
+#   cp .env.example .env   # 填桶 / 区域 / Basic Auth
+#   docker compose pull
+#   docker compose up -d
+#
+# 镜像需 arm64。本地先 build / push，再在悉尼 pull。
+
+services:
+  api:
+    image: registry.cn-hangzhou.aliyuncs.com/hanmin/blade-revisit:graviton-arm64
+    platform: linux/arm64
+    ports:
+      - "${BLADE_PORT:-8765}:8765"
+    env_file:
+      - .env
+    environment:
+      BLADE_DATA_ROOT: /data/wind-turbine-dtu
+      BLADE_DB: /data/results.db
+      PYTHONPATH: /app/src
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-southeast-2}
+    volumes:
+      # EBS 热图 / SQLite / overlays
+      - ${BLADE_HOST_DATA:-/data}:/data
+      # AWS 凭证（实例角色可省略此挂载）
+      - ${HOME}/.aws:/root/.aws:ro
+      # 代码热更新：依赖仍在镜像里；只挂业务目录
+      - ./api:/app/api
+      - ./src:/app/src
+      - ./web:/app/web
+      - ./worker:/app/worker
+      - ./scripts:/app/scripts
+      - ./configs:/app/configs
+      - ./eval:/app/eval
+      # usable 列表缓存 + rust/bg .npz（须落宿主机，否则重启丢、二次仍 miss）
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # 可选批跑：docker compose run --rm worker python worker/run_s3.py --query DJI_0190.JPG --ref-limit 30
+  worker:
+    image: registry.cn-hangzhou.aliyuncs.com/hanmin/blade-revisit:graviton-arm64
+    platform: linux/arm64
+    profiles: ["worker"]
+    env_file:
+      - .env
+    environment:
+      BLADE_DATA_ROOT: /data/wind-turbine-dtu
+      BLADE_DB: /data/results.db
+      PYTHONPATH: /app/src
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-ap-southeast-2}
+    volumes:
+      - ${BLADE_HOST_DATA:-/data}:/data
+      - ${HOME}/.aws:/root/.aws:ro
+      - ./api:/app/api
+      - ./src:/app/src
+      - ./web:/app/web
+      - ./worker:/app/worker
+      - ./scripts:/app/scripts
+      - ./configs:/app/configs
+      - ./eval:/app/eval
+      - ./data:/app/data
+    entrypoint: ["python"]
+    command: ["worker/run_s3.py", "--list-only"]

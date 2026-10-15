@@ -1,0 +1,16 @@
+# Three knobs from the contest brief. Tune on real pairs.
+# DTU full-res DJI_0004 ≈ lap 77 — 80 was skipping almost everything.
+blur_laplacian_min: 40.0
+inlier_ratio_min: 0.15
+area_delta_min: 0.25
+
+# Matching (not decision tiers; affect retrieval quality)
+match:
+  max_side: 1280
+  # Local OpenCV 5.0 wheel has ORB/SIFT, not AKAZE. Prefer orb; akaze when present (e.g. COOL).
+  detector: orb            # akaze | orb | sift
+  ratio_test: 0.75
+  ransac_reproj_threshold: 5.0
+  min_matches: 12
+  # 2018 query keypoints below this → skip gallery (don't bother matching)
+  min_query_keypoints: 40
