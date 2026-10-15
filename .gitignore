@@ -20,3 +20,7 @@ data/gallery_features/
 *.gif
 *.bmp
 data/_debug_*/
+
+# 作品集截图（仅此目录）
+!docs/figures/
+!docs/figures/*.png
